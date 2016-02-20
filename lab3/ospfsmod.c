@@ -602,7 +602,7 @@ static uint32_t
 allocate_block(void)
 {
 	/* EXERCISE: Your code here */
-	loff_t bitmap = 2 * OSPFS_BLKSIZE; // address of bitmap
+	void *bitmap = (void *)(2 * OSPFS_BLKSIZE); // address of bitmap
 	int blk_num = 0;
 
 	// find a free block and set blk_num to that block number
@@ -638,7 +638,7 @@ static void
 free_block(uint32_t blockno)
 {
 	/* EXERCISE: Your code here */
-	loff_t bitmap = 2 * OSPFS_BLKSIZE; // address of bitmap
+	void *bitmap = (void *)(2 * OSPFS_BLKSIZE); // address of bitmap
 
 	// return if attempting to free a non-freeable block
 	if(blockno == 0 || blockno == 1 || blockno == 2)
