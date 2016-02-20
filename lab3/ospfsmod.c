@@ -606,7 +606,8 @@ allocate_block(void)
 	int blk_num = 0;
 
 	// find a free block and set blk_num to that block number
-	for (int i = 0; i < OSPFS_BLKSIZE * 8; i++)
+	int i;
+	for (i = 0; i < OSPFS_BLKSIZE * 8; i++)
 	{
 		if(bitvector_test(bitmap,i))
 		{
