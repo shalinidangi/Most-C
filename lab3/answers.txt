@@ -11,14 +11,14 @@
 # information you'd like us to know, please add it at the end of the file.
 
 # Partner 1
-Name: 
-Student ID: 
-Email: 
+Name: Shalini Dangi
+Student ID: 304465145
+Email: shalinidangi@ucla.edu
 
 # Partner 2 (if you're working in a team)
-Name: 
-Student ID: 
-Email: 
+Name: Katie Aspinwall
+Student ID: 204450154
+Email: kaspi@ucla.edu
 
 # Extra credit problems
 #Extra credit problem: none
