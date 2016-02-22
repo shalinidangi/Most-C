@@ -1033,7 +1033,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	while (amount < count && retval >= 0) {
 		uint32_t blockno = ospfs_inode_blockno(oi, *f_pos);
 		uint32_t n;
-		unint32_t block_offset;
+		uint32_t block_offset;
 		char *data;
 
 		if (blockno == 0) {
