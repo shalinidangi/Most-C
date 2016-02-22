@@ -826,6 +826,7 @@ add_block(ospfs_inode_t *oi)
 	
 	// deallocate any allocated blocks and return error no
 	fail:
+		free_block(allocated[0]);
 		free_block(allocated[1]);
 		return retval;
 
