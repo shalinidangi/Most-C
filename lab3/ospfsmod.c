@@ -444,6 +444,7 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 	}
 
 	unsigned offset = 0;
+	int skip = 0;
 	// actual entries
 	while (r == 0 && ok_so_far >= 0 && f_pos >= 2) {
 		ospfs_direntry_t *od;
@@ -457,7 +458,7 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		// Already handled first two files
 		offset = (f_pos) * OSPFS_DIRENTRY_SIZE;
 		if (offset >= dir_oi->oi_size)
-		}
+		{
 			r = 1;		/* Fix me! */
 			break;		/* Fix me! */
 		}
