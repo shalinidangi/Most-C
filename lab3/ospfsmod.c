@@ -779,7 +779,7 @@ add_block(ospfs_inode_t *oi)
 		if(curr_blks < dir_max)
 		{
 			oi->oi_direct[curr_blks] = allocated[0];
-			break;
+			//break;
 		}
 
 		//store new block in indirect blk if possible
@@ -891,7 +891,7 @@ remove_block(ospfs_inode_t *oi)
 //   is good -- the function is pretty easy.  But the function might have
 //   to add or remove blocks.
 //
-//   If you need to grow the file, then do s o by adding one block at a time
+//   If you need to grow the file, then do so by adding one block at a time
 //   using the add_block function you coded above. If one of these additions
 //   fails with -ENOSPC, you must shrink the file back to its original size!
 //
@@ -908,20 +908,59 @@ static int
 change_size(ospfs_inode_t *oi, uint32_t new_size)
 {
 	uint32_t old_size = oi->oi_size;
+	
+	// Number of blocks added or removed
 	int r = 0;
 
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
-		return -EIO; // Replace this line
+		
+		// Attempt to grow the file
+
+		// Do not grow the file is the size is already the maximum size
+		if (new_size >= OSPFS_MAXFILESIZE)
+			return -ENOSPC;
+
+		// add_block returns -ENOSPC or -EIO if there is a failure
+		// and returns 0 if it was successful
+		int ret = add_block(oi);
+		if (ret == 0)
+		{
+			r++;
+		}
+		else if (ret == -ENOSPC)
+		{
+			// Need to return the file to its original size
+			while (r > 0)
+			{
+				remove_block(oi);
+				r--;
+			}
+			oi->oi_size = old_size;
+			return -ENOSPC;
+		}
+		else if (ret == -EIO)
+		{
+			// Don't worry about restoring file to original size
+			return -EIO;
+		}
+
+
 	}
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
-		return -EIO; // Replace this line
+		
+		// Shrink the file
+		int ret = remove_block(oi);
+		if (ret < 0)
+			return -EIO;
+
 	}
 
 	/* EXERCISE: Make sure you update necessary file meta data
 	             and return the proper value. */
-	return -EIO; // Replace this line
+	oi->oi_size = new_size;
+	return 0;
 }
 
 
