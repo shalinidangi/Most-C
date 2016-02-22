@@ -778,7 +778,7 @@ add_block(ospfs_inode_t *oi)
 		// store new block as direct if possible
 		if(curr_blks < dir_max)
 		{
-			oi->oi_direct[curr_blks] = block_no;
+			oi->oi_direct[curr_blks] = allocated[0];
 			break;
 		}
 
