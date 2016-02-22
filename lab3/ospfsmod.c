@@ -493,11 +493,13 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 			skip = 1;
 		}
 
+		ospfs_inode_t *oi = ospfs_inode(od->od_ino);
+
 		// Call filldir based on file type
 		if (!skip)
 		{
 			int size = strlen(od->od_name);
-			int type = od->oi_ftype;
+			int type = oi->oi_ftype;
 			// Determine if the file is a regular file or a directory
 			// using ospfs_inode and the oi_ftype member
 			if (type == OSPFS_FTYPE_REG)
@@ -922,7 +924,7 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		/* EXERCISE: Your code here */
 
 		// Determine how much data to read
-		uint32_t n = ((*fpos)/OSPFS_BLKSIZE + 1) * OSPFS_BLKSIZE - *fpos; 
+		uint32_t n = ((*f_pos)/OSPFS_BLKSIZE + 1) * OSPFS_BLKSIZE - *f_pos; 
 		int success = copy_to_user(buffer, *f_pos, n);
 		if (!success)
 		{
