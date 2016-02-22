@@ -1102,7 +1102,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	// Copy data block by block
 	while (amount < count && retval >= 0) {
 		uint32_t blockno = ospfs_inode_blockno(oi, *f_pos);
-		uint32_t n;
+		uint32_t amt_in_blk;
 		uint32_t block_offset;
 		char *data;
 
@@ -1121,24 +1121,25 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 
 		// n = ((*f_pos)/OSPFS_BLKSIZE + 1) * OSPFS_BLKSIZE - *f_pos; 
 		block_offset = *f_pos % OSPFS_BLKSIZE;
-		n = OSPFS_BLKSIZE - block_offset;
+		amt_in_blk = OSPFS_BLKSIZE - block_offset;
 
 		// If we don't need to write to the entire block, lessen 
 		// the amount we write to the count remaining
-		if (n > count - amount)
+		size_t remaining_data = count - amount;
+		if (amt_in_blk > remaining_data)
 		{
-			n = count - amount;
+			amt_in_blk = remaining_data;
 		}
 
-		if (copy_from_user(data + block_offset, buffer, n) > 0)
+		if (copy_from_user(data + block_offset, buffer, amt_in_blk) > 0)
 		{
 			retval = -EFAULT;
 			goto done;
 		}
 
-		buffer += n;
-		amount += n;
-		*f_pos += n;
+		buffer += amt_in_blk;
+		amount += amt_in_blk;
+		*f_pos += amt_in_blk;
 	}
 
     done:
