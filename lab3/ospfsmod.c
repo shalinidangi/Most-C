@@ -755,11 +755,79 @@ direct_index(uint32_t b)
 static int
 add_block(ospfs_inode_t *oi)
 {
+	uint32_t dir_max = 10;
+	uint32_t indir_max = dir_max + 256;
+	int retval = 0;
+
 	// current number of blocks in file
-	uint32_t n = ospfs_size2nblocks(oi->oi_size);
+	uint32_t curr_blks = ospfs_size2nblocks(oi->oi_size);
 
 	// keep track of allocations to free in case of -ENOSPC
 	uint32_t *allocated[2] = { 0, 0 };
+
+	// allocate a direct block
+	allocated[0] = allocate_block();
+
+	if(!allocated[0]) // allocation failed
+	{
+		retval = -ENOSPC;
+		goto fail;
+	}
+	else
+	{
+		// store new block as direct if possible
+		if(curr_blks < dir_max)
+		{
+			oi->oi_direct[curr_blks] = block_no;
+			break;
+		}
+
+		//store new block in indirect blk if possible
+		else if(curr_blks < indir_max)
+		{
+			// allocate a new indirect block if necessary
+			if(curr_blks == dir_max)
+			{
+				allocated[1] = allocate_block();
+				
+				if(!allocated[1])
+				{
+					retval = -ENOSPC;
+					goto fail;
+				}
+
+				oi->oi_indirect = allocated[1];
+			}
+
+			// TACO: add direct block to indirect block
+			// TACO: break
+		}
+
+		// store new block in indirect^2 if possible
+		else
+		{
+			// allocate a new indir^2 block in necessary
+			if(curr_blks == indir_max)
+			{
+				uint32_t indir2_blk = allocate_block();
+				
+				if(!indir2_blk)
+				{
+					retval = -ENOSPC;
+					goto fail;
+				}
+
+				oi->oi_indirect2 = indir2_blk;
+			}
+
+			// TACO: add direct block to an indirect block in oi->oi_indirect2
+		}
+	}
+	
+	// deallocate any allocated blocks and return error no
+	fail:
+		free_block(allocated[1]);
+		return retval;
 
 	/* EXERCISE: Your code here */
 	return -EIO; // Replace this line
