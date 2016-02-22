@@ -602,7 +602,23 @@ static uint32_t
 allocate_block(void)
 {
 	/* EXERCISE: Your code here */
-	return 0;
+	loff_t bitmap = 2 * OSPFS_BLKSIZE; // address of bitmap
+	int blk_num = 0;
+
+	// find a free block and set blk_num to that block number
+	for (int i = 0; i < OSPFS_BLKSIZE * 8; i++)
+	{
+		if(bitvector_test(bitmap,i))
+		{
+			blk_num = i;
+			break;
+		}
+	}
+
+	if (blk_num)
+		bitvector_clear(bitmap,blk_num);
+
+	return blk_num;
 }
 
 
@@ -621,6 +637,13 @@ static void
 free_block(uint32_t blockno)
 {
 	/* EXERCISE: Your code here */
+	loff_t bitmap = 2 * OSPFS_BLKSIZE; // address of bitmap
+
+	// return if attempting to free a non-freeable block
+	if(blockno == 0 || blockno == 1 || blockno == 2)
+		return;
+
+	bitvector_set(bitmap,blockno);
 }
 
 
