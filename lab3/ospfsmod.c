@@ -443,6 +443,7 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 			f_pos++;
 	}
 
+	unsigned offset = 0;
 	// actual entries
 	while (r == 0 && ok_so_far >= 0 && f_pos >= 2) {
 		ospfs_direntry_t *od;
@@ -452,9 +453,14 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 * the loop.  For now we do this all the time.
 		 *
 		 * EXERCISE: Your code here */
-		r = 1;		/* Fix me! */
-		break;		/* Fix me! */
 
+		// Already handled first two files
+		offset = (f_pos) * OSPFS_DIRENTRY_SIZE;
+		if (offset >= dir_oi->oi_size)
+		}
+			r = 1;		/* Fix me! */
+			break;		/* Fix me! */
+		}
 		/* Get a pointer to the next entry (od) in the directory.
 		 * The file system interprets the contents of a
 		 * directory-file as a sequence of ospfs_direntry structures.
@@ -476,7 +482,47 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 */
 
 		/* EXERCISE: Your code here */
+
+		// Get a pointer to the next entry we want to look at and store it in od
+		od = ospfs_inode_data(dir_oi, offset);
+
+		// If inode number is 0, ignore it (skip over it) and set skip variable
+		if (od->od_ino == 0)
+		{
+			skip = 1;
+		}
+
+		// Call filldir based on file type
+		if (!skip)
+		{
+			int size = strlen(od->od_name);
+			int type = od->oi_ftype;
+			// Determine if the file is a regular file or a directory
+			// using ospfs_inode and the oi_ftype member
+			if (type == OSPFS_FTYPE_REG)
+			{
+				ok_so_far = filldir(dirent, od->od_name, size, f_pos, od->od_ino, DT_REG);
+			}
+			else if (type == OSPFS_FTYPE_DIR)
+			{
+				ok_so_far = filldir(dirent, od->od_name, size, f_pos, od->od_ino, DT_DIR);
+			}
+		}
+
+		// If filldir succeeded or we skipped over the file, update the variables
+		// to prepare for the next entry
+		if (ok_so_far >= 0 || skip)
+		{
+			offset += OSPFS_DIRENTRY_SIZE;
+			f_pos++;
+		}
+		else
+		{
+			// filldir failed
+			return 0;
+		}
 	}
+
 
 	// Save the file position and return!
 	filp->f_pos = f_pos;
