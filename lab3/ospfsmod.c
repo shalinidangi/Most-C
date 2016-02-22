@@ -935,7 +935,7 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 	// Copy the data to user block by block
 	while (amount < count && retval >= 0) {
 		uint32_t blockno = ospfs_inode_blockno(oi, *f_pos); //block no in file that contains fpos
-		uint32_t n;
+		uint32_t amt_in_blk;
 		uint32_t block_offset;
 		//num bytes between offset into this block and start of next block
 		char *data;
@@ -957,25 +957,26 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// Determine how much data to read
 		// n = ((*f_pos)/OSPFS_BLKSIZE + 1) * OSPFS_BLKSIZE - *f_pos; 
 		block_offset = *f_pos % OSPFS_BLKSIZE;
-		n = OSPFS_BLKSIZE - block_offset;
+		amt_in_blk = OSPFS_BLKSIZE - block_offset;
 
 		// If we don't need to read the entire block, lessen 
 		// the amount we read to the count remaining
-		if (n > count - amount)
+		size_t remaining_data = count - amount;
+		if (amt_in_blk > remaining_data)
 		{
-			n = count - amount;
+			amt_in_blk = remaining_data;
 		}
 
 		
-		if(copy_to_user(buffer, data + block_offset, n) > 0)
+		if(copy_to_user(buffer, data + block_offset, amt_in_blk) > 0)
 		{
 			retval = -EFAULT;
 			goto done;
 		}
 
-		buffer += n;
-		amount += n;
-		*f_pos += n;
+		buffer += amt_in_blk;
+		amount += amt_in_blk;
+		*f_pos += amt_in_blk;
 	}
 
     done:
