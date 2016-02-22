@@ -607,7 +607,7 @@ allocate_block(void)
 
 	// find a free block and set blk_num to that block number
 	int i;
-	for (i = 0; i < OSPFS_BLKSIZE * 8; i++)
+	for (i = 2; i < OSPFS_BLKSIZE * 8; i++)
 	{
 		if(bitvector_test(bitmap,i))
 		{
@@ -822,7 +822,7 @@ remove_block(ospfs_inode_t *oi)
 //   is good -- the function is pretty easy.  But the function might have
 //   to add or remove blocks.
 //
-//   If you need to grow the file, then do so by adding one block at a time
+//   If you need to grow the file, then do s o by adding one block at a time
 //   using the add_block function you coded above. If one of these additions
 //   fails with -ENOSPC, you must shrink the file back to its original size!
 //
