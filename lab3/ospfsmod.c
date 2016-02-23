@@ -757,6 +757,8 @@ add_block(ospfs_inode_t *oi)
 {
 	uint32_t dir_max = 10;
 	uint32_t indir_max = dir_max + 256;
+	uint32_t indir2_max = dir_max + indir_max + (256 * 256);
+
 	int retval = 0;
 
 	// current number of blocks in file
@@ -775,7 +777,6 @@ add_block(ospfs_inode_t *oi)
 	}
 	else
 	{
-		
 		// store new block as direct if possible
 		if(curr_blks < dir_max)
 		{
@@ -811,7 +812,7 @@ add_block(ospfs_inode_t *oi)
 		}
 
 		// store new block in indirect^2 if possible
-		else
+		else if(curr_blks < indir2_max)
 		{
 			// allocate a new indir^2 block in necessary
 			if(curr_blks == indir_max)
@@ -826,8 +827,24 @@ add_block(ospfs_inode_t *oi)
 
 				oi->oi_indirect2 = indir2_blk;
 			}
+			loff_t indir2_addr = OSPFS_BLKSIZE * oi->oi_indirect2; // address of indir2 block 
 
-			// TACO: add direct block to an indirect block in oi->oi_indirect2
+
+			// compute which indirect block the block goes into
+			loff_t indir_blk_off = sizeof(uint32_t) * (blk_num - indir_max)/256; // offset of indirect block
+			
+			// read indirect block no from memory 
+			uint32_t *indir_ptr = (uint32_t *)(indir2_addr + indir_blk_off);
+			uint32_t indir_blockno = *indir_ptr;
+			loff_t indir_addr = 0SPFS_BLKSIZE * indir_blockno;
+
+			// copy new direct block into indirect block
+			loff_t offset = ((blk_num - indir_max) % 256) * sizeof(uint32_t); // offset into indirect block
+			if(copy_from_user((void *)(indir_addr + offset), &(allocated[0]), sizeof(uint32_t)) > 0)
+			{
+				retval = -EIO;
+				goto fail;
+			}
 		}
 	}
 	
