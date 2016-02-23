@@ -764,6 +764,10 @@ add_block(ospfs_inode_t *oi)
 	// current number of blocks in file
 	uint32_t curr_blks = ospfs_size2nblocks(oi->oi_size);
 
+	// return error if can't allocate more blocks for file
+	if(curr_blks >= OSPFS_MAXFILEBLKS)
+		return -ENOSPC;
+
 	// keep track of allocations to free in case of -ENOSPC
 	uint32_t allocated[2] = { 0, 0 };
 
