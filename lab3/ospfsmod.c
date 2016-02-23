@@ -775,6 +775,7 @@ add_block(ospfs_inode_t *oi)
 	}
 	else
 	{
+		
 		// store new block as direct if possible
 		if(curr_blks < dir_max)
 		{
@@ -799,8 +800,12 @@ add_block(ospfs_inode_t *oi)
 				oi->oi_indirect = allocated[1];
 			}
 
-			// TACO: add direct block to indirect block
-			// TACO: break
+			// compute offset into indirect block based on num blocks
+			loff_t offset = (curr_blks - dir_max) * sizeof(uint32_t);
+			loff_t indir_addr = OSPFS_BLKSIZE * oi->oi_indirect;
+			copy_from_user((void *)(indir_addr + offset), &(allocated[0]), sizeof(uint32_t));
+
+			break;
 		}
 
 		// store new block in indirect^2 if possible
