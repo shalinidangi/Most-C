@@ -855,7 +855,7 @@ add_block(ospfs_inode_t *oi)
 		return retval;
 
 	/* EXERCISE: Your code here */
-	return -EIO; // Replace this line
+	return 0;
 }
 
 
@@ -950,14 +950,14 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 		int ret = add_block(oi);
 		if (ret == 0)
 		{
-			r++;
+			r++; //TACO why?
 		}
 		else if (ret == -ENOSPC)
 		{
 			// Need to return the file to its original size
 			while (r > 0)
 			{
-				remove_block(oi);
+				remove_block(oi); 
 				r--;
 			}
 			oi->oi_size = old_size;
