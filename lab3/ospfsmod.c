@@ -831,15 +831,15 @@ add_block(ospfs_inode_t *oi)
 
 
 			// compute which indirect block the block goes into
-			loff_t indir_blk_off = sizeof(uint32_t) * (blk_num - indir_max)/256; // offset of indirect block
+			loff_t indir_blk_off = sizeof(uint32_t) * (curr_blks - indir_max)/256; // offset of indirect block
 			
 			// read indirect block no from memory 
 			uint32_t *indir_ptr = (uint32_t *)(indir2_addr + indir_blk_off);
 			uint32_t indir_blockno = *indir_ptr;
-			loff_t indir_addr = 0SPFS_BLKSIZE * indir_blockno;
+			loff_t indir_addr = OSPFS_BLKSIZE * indir_blockno;
 
 			// copy new direct block into indirect block
-			loff_t offset = ((blk_num - indir_max) % 256) * sizeof(uint32_t); // offset into indirect block
+			loff_t offset = ((curr_blks - indir_max) % 256) * sizeof(uint32_t); // offset into indirect block
 			if(copy_from_user((void *)(indir_addr + offset), &(allocated[0]), sizeof(uint32_t)) > 0)
 			{
 				retval = -EIO;
