@@ -757,7 +757,7 @@ add_block(ospfs_inode_t *oi)
 {
 	uint32_t dir_max = OSPFS_NDIRECT;
 	uint32_t indir_max = dir_max + OSPFS_NINDIRECT;
-	uint32_t indir2_max = dir_max + indir_max + (OSPFS_NINDIRECT * OSPFS_NINDIRECT);
+	uint32_t indir2_max = indir_max + (OSPFS_NINDIRECT * OSPFS_NINDIRECT);
 
 	int retval = 0;
 
