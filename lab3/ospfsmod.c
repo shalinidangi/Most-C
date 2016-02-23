@@ -763,7 +763,7 @@ add_block(ospfs_inode_t *oi)
 	uint32_t curr_blks = ospfs_size2nblocks(oi->oi_size);
 
 	// keep track of allocations to free in case of -ENOSPC
-	uint32_t *allocated[2] = { 0, 0 };
+	uint32_t allocated[2] = { 0, 0 };
 
 	// allocate a direct block
 	allocated[0] = allocate_block();
@@ -780,7 +780,6 @@ add_block(ospfs_inode_t *oi)
 		if(curr_blks < dir_max)
 		{
 			oi->oi_direct[curr_blks] = allocated[0];
-			//break;
 		}
 
 		//store new block in indirect blk if possible
@@ -803,9 +802,12 @@ add_block(ospfs_inode_t *oi)
 			// compute offset into indirect block based on num blocks
 			loff_t offset = (curr_blks - dir_max) * sizeof(uint32_t);
 			loff_t indir_addr = OSPFS_BLKSIZE * oi->oi_indirect;
-			copy_from_user((void *)(indir_addr + offset), &(allocated[0]), sizeof(uint32_t));
+			if(copy_from_user((void *)(indir_addr + offset), &(allocated[0]), sizeof(uint32_t)) > 0)
+			{
+				retval = -EIO;
+				goto fail;
+			}
 
-			break;
 		}
 
 		// store new block in indirect^2 if possible
