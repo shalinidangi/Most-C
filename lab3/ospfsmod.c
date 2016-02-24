@@ -1338,8 +1338,9 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	l->od_ino = src_dentry->d_inode->i_ino;
 
 	// Change the file name
-	l->od_name = dst_dentry->d_name.name;
+	//l->od_name = dst_dentry->d_name.name;
 
+	memcpy(l->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len);
 	l->od_name[dst_dentry->d_name.len] = '\0';
 
 	// Increment the number of links on the source file
