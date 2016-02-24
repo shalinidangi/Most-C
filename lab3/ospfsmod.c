@@ -1347,12 +1347,9 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	memcpy(l->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len);
 	l->od_name[dst_dentry->d_name.len] = '\0';
 
-	// Increment the number of links on the source file
+	// Increment the number of links on the inode
 	ospfs_inode_t *src_inode = ospfs_inode(src_dentry->d_inode->i_ino);
 	src_inode->oi_nlink++;
-
-	// Set number of links on dest file
-	l->oi_nlink = src_inode->oi_nlink;
 
 	return 0;
 }
@@ -1399,16 +1396,16 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 		return -EEXIST;
 
 	// return error if name is too long
-	if (dentry->d.name.len > OSPFS_MAXNAMELEN)
+	if (dentry->d_name.len > OSPFS_MAXNAMELEN)
 		return -ENAMETOOLONG;
 
 	// find an empty inode to use for file
 	uint32_t inode_no; 
-	ospfs_inode_t inode;
+	ospfs_inode_t *inode;
 	for (inode_no = 2; inode_no < ospfs_super->os_ninodes; inode_no++) 
 	{
-		ret = ospfs_inode(inode_no);
-		if(ret->oi_nlink == 0)
+		ospfs_inode_t *tmp = ospfs_inode(inode_no);
+		if(tmp->oi_nlink == 0)
 		{
 			entry_ino = inode_no;
 			break;
@@ -1425,7 +1422,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	}
 	else 			// could not find empty inode. return error.
 	{
-		return -EI0;
+		return -EIO;
 	}
 	
 	// TACO find and initialize directory entry
