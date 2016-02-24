@@ -1351,8 +1351,47 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 static int
 ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidata *nd)
 {
+	// TACO check if disk is full
+
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 0;
+
+	// return error if a file with the given name already exists in the dir
+	if (find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len) != NULL)
+		return -EEXIST;
+
+	// return error if name is too long
+	if (dentry->d.name.len > OSPFS_MAXNAMELEN)
+		return -ENAMETOOLONG;
+
+	// find an empty inode to use for file
+	uint32_t inode_no; 
+	ospfs_inode_t inode;
+	for (inode_no = 2; inode_no < ospfs_super->os_ninodes; inode_no++) 
+	{
+		ret = ospfs_inode(inode_no);
+		if(ret->oi_nlink == 0)
+		{
+			entry_ino = inode_no;
+			break;
+		}
+	} 
+
+	if (entry_ino) 	// if we actually found inode, initialize
+	{
+		inode = ospfs_inode(entry_ino);
+		inode->oi_nlink = 0;
+		inode->oi_size = 0;
+		inode->oi_mode = mode;
+		inode->oi_ftype = OSPFS_FTYPE_REG;
+	}
+	else 			// could not find empty inode. return error.
+	{
+		return -EI0;
+	}
+	
+	// TACO find and initialize directory entry
+
 	/* EXERCISE: Your code here. */
 	return -EINVAL; // Replace this line
 
