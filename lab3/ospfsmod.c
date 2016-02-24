@@ -1335,15 +1335,15 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	// If not, return -ENOSPC?
 
 	// Set the inode value
-	l->d_inode->i_ino = src_dentry->d_inode->i_ino;
+	l->od_ino = src_dentry->d_inode->i_ino;
 
 	// Change the file name
-	l->d_name.name = dst_dentry->d_name.name;
+	l->od_name = dst_dentry->d_name.name;
 
-	l->d_name.len = dst_dentry->d_name.len;
+	l->od_name[dst_dentry->d_name.len] = '\0';
 
 	// Increment the number of links on the source file
-	ospfs_inode(src_denry->d_inode->i_ino)->oi_nlink++;
+	ospfs_inode(src_dentry->d_inode->i_ino)->oi_nlink++;
 
 	return 0;
 }
