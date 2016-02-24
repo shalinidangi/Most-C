@@ -1421,7 +1421,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	}
 	else 			// could not find empty inode. return error.
 	{
-		return -EI0; // TACO: should this be -ENOSPC?
+		return -EIO; // TACO: should this be -ENOSPC?
 	}
 	
 	/* ================= FIND AND INITIALIZE DIRECTORY ENTRY ================= */
@@ -1435,7 +1435,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 
 	// copy name from dentry into dir_entry
 	memcpy(dir_entry->od_name, dentry->d_name.name, dentry->d_name.len);
-	l->od_name[dst_dentry->d_name.len] = '\0';
+	dir_entry->od_name[dentry->d_name.len] = '\0';
 
 
 	/* Execute this code after your function has successfully created the
