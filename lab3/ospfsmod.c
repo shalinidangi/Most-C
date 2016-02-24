@@ -1389,8 +1389,6 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 static int
 ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidata *nd)
 {
-	// TACO check if disk is full
-
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 0;
 
@@ -1402,6 +1400,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	if (dentry->d.name.len > OSPFS_MAXNAMELEN)
 		return -ENAMETOOLONG;
 
+	/* ================== FIND AND INITIALIZE INODE =================== */
 	// find an empty inode to use for file
 	uint32_t inode_no; 
 	ospfs_inode_t inode;
@@ -1425,13 +1424,22 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	}
 	else 			// could not find empty inode. return error.
 	{
-		return -EI0;
+		return -EI0; // TACO: should this be -ENOSPC?
 	}
 	
-	// TACO find and initialize directory entry
+	/* ================= FIND AND INITIALIZE DIRECTORY ENTRY ================= */
+	ospfs_direntry_t* dir_entry = create_blank_direntry(ospfs_inode(dir->i_ino));
 
-	/* EXERCISE: Your code here. */
-	return -EINVAL; // Replace this line
+	// return error if problem creating direntry
+	if (IS_ERR(dir_entry))
+		return PTR_ERR(dir_entry);
+
+	dir_entry->od_ino = entry_ino;
+
+	// copy name from dentry into dir_entry
+	memcpy(dir_entry->od_name, dentry->d_name.name, dentry->d_name.len);
+	l->od_name[dst_dentry->d_name.len] = '\0';
+
 
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
