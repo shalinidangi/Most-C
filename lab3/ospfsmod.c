@@ -1331,8 +1331,12 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 
 	ospfs_direntry_t* l = create_blank_direntry(ospfs_inode(dir->i_ino));
 
+	// Return error if problem creating direntry
+	if(IS_ERR(l))
+		return PTR_ERR(l);
+
 	// TACO: Check if we were able to create the file
-	// If not, return -ENOSPC?
+	// If not, return -ENOSPC?  
 
 	// Set the inode value
 	l->od_ino = src_dentry->d_inode->i_ino;
@@ -1344,7 +1348,11 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	l->od_name[dst_dentry->d_name.len] = '\0';
 
 	// Increment the number of links on the source file
-	ospfs_inode(src_dentry->d_inode->i_ino)->oi_nlink++;
+	ospfs_inode_t *src_inode = ospfs_inode(src_dentry->d_inode->i_ino);
+	src_inode->oi_nlink++;
+
+	// Set number of links on dest file
+	l->oi_nlink = src_inode->oi_nlink;
 
 	return 0;
 }
