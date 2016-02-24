@@ -1316,7 +1316,37 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 static int
 ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dentry) {
 	/* EXERCISE: Your code here. */
-	return -EINVAL;
+
+	// Failure if the name is too long
+	if (dst_dentry->d_name.len > OSPFS_MAXNAMELEN)
+	{
+		return -ENAMETOOLONG;
+	}
+
+	// Failure if the filename already exists
+	if (find_direntry(ospfs_inode(dir->i_ino), dst_dentry->d_name.name, dst_dentry->d_name.len) != NULL)
+	{
+		return -EEXIST;
+	}
+
+	ospfs_direntry_t* l = create_blank_direntry(ospfs_inode(dir->i_ino));
+
+	// TACO: Check if we were able to create the file
+	// If not, return -ENOSPC?
+
+	// Set the inode value
+	l->od_ino = src_dentry->d_inode->i_ino;
+
+	// Change the file name
+	//l->od_name = dst_dentry->d_name.name;
+
+	memcpy(l->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len);
+	l->od_name[dst_dentry->d_name.len] = '\0';
+
+	// Increment the number of links on the source file
+	ospfs_inode(src_dentry->d_inode->i_ino)->oi_nlink++;
+
+	return 0;
 }
 
 // ospfs_create
