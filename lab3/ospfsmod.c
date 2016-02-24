@@ -1280,8 +1280,33 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    Use ERR_PTR if this fails; otherwise, clear out all the directory
 	//    entries and return one of them.
 
-	/* EXERCISE: Your code here. */
-	return ERR_PTR(-EINVAL); // Replace this line
+
+	/* ================ SEARCH FOR AN EMPTY ENTRY ==================== */
+	int off;
+	for (off = 0; off < dir_oi->oi_size; off += OSPFS_DIRENTRY_SIZE) 
+	{
+		ospfs_direntry_t *od = ospfs_inode_data(dir_oi, off);
+		
+		// return dir entry if it is empty (has no valid inode num)
+		if (!od->od_ino)
+			return od;
+	}
+
+	/* ================= ALLOCATE BLOCK (IF NEEDED) ================== */
+	ospfs_direntry_t dentry;
+	int success = add_block(dir_oi);
+
+	// if add_block fails, return with error from add_block
+	if(success < 0)
+		return ERR_PTR(success)
+
+	// get address of newly allocated block
+	uint32_t blockno = ospfs_inode_blockno(dir_oi, dir_oi->oi_size - 1);
+	loff_t blk_addr = blockno * OSPFS_BLKSIZE;
+
+	// zero out all the dir entries in the block
+
+	return &dentry;
 }
 
 // ospfs_link(src_dentry, dir, dst_dentry
