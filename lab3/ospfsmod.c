@@ -1293,7 +1293,6 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	}
 
 	/* ================= ALLOCATE BLOCK (IF NEEDED) ================== */
-	ospfs_direntry_t dentry;
 	int success = add_block(dir_oi);
 
 	// if add_block fails, return with error from add_block
@@ -1301,12 +1300,19 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 		return ERR_PTR(success)
 
 	// get address of newly allocated block
+	uint32_t old_size = dir_oi->oi_size;
 	uint32_t blockno = ospfs_inode_blockno(dir_oi, dir_oi->oi_size - 1);
 	loff_t blk_addr = blockno * OSPFS_BLKSIZE;
 
 	// zero out all the dir entries in the block
+	int off;
+	for (off = old_size; off < dir_oi->oi_size; off += OSPFS_DIRENTRY_SIZE) 
+	{
+		ospfs_direntry_t *od = ospfs_inode_data(dir_oi, off);
+		od->od_ino = 0;
+	}
 
-	return &dentry;
+	return ospfs_inode_data(dir_oi, old_size);
 }
 
 // ospfs_link(src_dentry, dir, dst_dentry
