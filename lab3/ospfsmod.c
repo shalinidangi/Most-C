@@ -1282,7 +1282,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 
 
 	/* ================ SEARCH FOR AN EMPTY ENTRY ==================== */
-	int off;
+	uint32_t off;
 	for (off = 0; off < dir_oi->oi_size; off += OSPFS_DIRENTRY_SIZE) 
 	{
 		ospfs_direntry_t *od = ospfs_inode_data(dir_oi, off);
@@ -1297,7 +1297,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 
 	// if add_block fails, return with error from add_block
 	if(success < 0)
-		return ERR_PTR(success)
+		return ERR_PTR(success);
 
 	// get address of newly allocated block
 	uint32_t old_size = dir_oi->oi_size;
@@ -1305,7 +1305,6 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	loff_t blk_addr = blockno * OSPFS_BLKSIZE;
 
 	// zero out all the dir entries in the block
-	int off;
 	for (off = old_size; off < dir_oi->oi_size; off += OSPFS_DIRENTRY_SIZE) 
 	{
 		ospfs_direntry_t *od = ospfs_inode_data(dir_oi, off);
