@@ -778,12 +778,13 @@ add_block(ospfs_inode_t *oi)
 	// block numbers and blocks of interest to us
 	uint32_t dir_blk_no = 0, indir_blk_no = 0, indir2_blk_no = 0;
 	uint32_t *dir_blk, *indir_blk, *indir2_blk;
+	
 
 	// num blocks in file
 	uint32_t curr_blks = ospfs_size2nblocks(oi->oi_size); 			
 
 	// return error if can't allocate more blocks for file
-	if(curr_blks >= OSPFS_MAXFILEBLKS)
+	if(curr_blks + 1 >= OSPFS_MAXFILEBLKS)
 		return -EIO;
 
 	/* =================== ALLOCATE DIRECT BLOCK ===================== */
@@ -794,6 +795,10 @@ add_block(ospfs_inode_t *oi)
 		retval = -ENOSPC;
 		goto fail;
 	}
+
+	// zero out newly allocated direct block
+	dir_blk = ospfs_block(dir_blk_no);
+	memset(dir_blk, 0, OSPFS_BLKSIZE);
 
 	/* ============= STORE BLOCK AS DIRECT IF POSSIBLE =============== */
 	if(curr_blks < dir_max)
@@ -815,17 +820,21 @@ add_block(ospfs_inode_t *oi)
 				goto fail;
 			}
 
+			// zero out newly allocated block
+			indir_blk = ospfs_block(indir_blk_no);
+			memset(indir_blk, 0, OSPFS_BLKSIZE);
+
 			oi->oi_indirect = indir_blk_no;
 		}
 
 		// store direct block's number in indirect block
-		uint32_t *indir_blk = ospfs_block(oi->oi_indirect);
+		indir_blk = ospfs_block(oi->oi_indirect);
 		int32_t offset = direct_index(curr_blks);
 		indir_blk[offset] = dir_blk_no;
 	}
 
-	/* ============ STORE BLOCK AS INDIR^2 IF POSSIBLE ============== */
-	else if(curr_blks < indir2_max)
+	/* =============== STORE BLOCK AS INDIR^2 IF NEEDED ================ */
+	else
 	{
 		int32_t indir_offset = indir_index(curr_blks);
 		int32_t dir_offset = direct_index(curr_blks);
@@ -841,6 +850,10 @@ add_block(ospfs_inode_t *oi)
 				goto fail;
 			}
 
+			// zero out newly allocated block
+			indir2_blk = ospfs_block(indir2_blk_no);
+			memset(indir2_blk, 0, OSPFS_BLKSIZE);
+
 			oi->oi_indirect2 = indir2_blk_no;
 		}
 
@@ -854,6 +867,10 @@ add_block(ospfs_inode_t *oi)
 				retval = -ENOSPC;
 				goto fail;
 			}
+
+			// zero out newly allocated block
+			indir_blk = ospfs_block(indir_blk_no);
+			memset(indir_blk, 0, OSPFS_BLKSIZE);
 
 			// store indirect block in indir^2 block
 			indir2_blk = ospfs_block(oi->oi_indirect2);
