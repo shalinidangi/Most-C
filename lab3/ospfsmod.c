@@ -931,69 +931,86 @@ remove_block(ospfs_inode_t *oi)
 	uint32_t indir_max = dir_max + OSPFS_NINDIRECT;
 	uint32_t indir2_max = indir_max + (OSPFS_NINDIRECT * OSPFS_NINDIRECT);
 
-	int retval = 0;
+	// block numbers and blocks of interest to us
+	uint32_t *dir_blk, *indir_blk, *indir2_blk;
+	uint32_t dir_blk_no = 0, indir_blk_no = 0, indir2_blk_no = 0;
+	uint32_t last_block = ospfs_size2nblocks(oi->oi_size); // 0-index of last direct block
 
-	uint32_t curr_blks = ospfs_size2nblocks(oi->oi_size); 	// number of blocks in file
-	uint32_t blockno = 0; 									// block number of block to free
+	// whether to attempt freeing an indirect or indir^2 block
+	int free_indir = 0, free_indir2 = 0;
 
-	if (curr_blks <= dir_max)
+
+	/* ================ COMPUTE BLOCK NUMBERS OF BLOCKS TO FREE ================= */
+	if (last_block < dir_max) // block is in direct block array 
 	{
-		blockno = oi->oi_direct[curr_blks - 1];
+		dir_blk_no = last_block;
 	}
 
-	else if (curr_blks <= indir_max)
+	else if (last_block < indir_max) // block is in the indirect block (oi_indirect)
 	{
-		// compute offset into indirect block based on num blocks
-		loff_t offset = (curr_blks - dir_max - 1) * sizeof(uint32_t);
-		loff_t indir_addr = OSPFS_BLKSIZE * oi->oi_indirect;
+		int32_t offset = direct_index(last_block);
+		
+		indir_blk_no = oi->oi_indirect;
+		
+		if(indir_blk_no < 3)  // return error if block num invalid
+			return -EIO;
+		
+		indir_blk = ospfs_block(indir_blk_no);
 
-		// copy block number from inode to 'blockno' variable
-		if (copy_to_user(&blockno, (void *)(indir_addr + offset), sizeof(uint32_t)) > 0)
+		dir_blk_no = indir_blk[offset];
+
+		// free indirect block if we're freeing the last block it contains
+		if (offset == 0)
+			free_indir = 1;
+	}
+
+	else if (dir_blk_no < indir2_max) // block is in the indir^2 block
+	{
+		int32_t indir_offset = indir_index(last_block);
+		int32_t dir_offset = direct_index(last_block);
+
+		indir2_blk_no = oi->oi_indirect2;
+
+		if(indir2_blk_no < 3) // return error if block num invalid
 			return -EIO;
 
-		// remove indirect block if we just removed the last block in it 
-		if (curr_blks == dir_max + 1)
-			free_block(oi->oi_indirect);
-	}
+		indir2_blk = ospfs_block(indir2_blk_no);
 
-	else if (curr_blks <= indir2_max)
-	{		
-		loff_t indir2_addr = OSPFS_BLKSIZE * oi->oi_indirect2; // address of indir2 block 
+		indir_blk_no = indir2_blk[indir_offset];
 
-		// compute which indirect block the block goes into
-		loff_t indir_blk_off = sizeof(uint32_t) * (curr_blks - indir_max - 1)/256; // offset of indirect block
-		
-		// read indirect block no from memory 
-		uint32_t *indir_ptr = (uint32_t *)(indir2_addr + indir_blk_off);
-		uint32_t indir_blockno = *indir_ptr;
-		
-		// read direct block no from memory
-		loff_t indir_addr = OSPFS_BLKSIZE * indir_blockno;
-		loff_t offset = ((curr_blks - indir_max - 1) % 256) * sizeof(uint32_t); // offset into indirect block
-		if (copy_to_user(&blockno, (void *)(indir_addr + offset), sizeof(uint32_t)) > 0)
+		if(indir_blk_no < 3) // return error if block num invalid
 			return -EIO;
 
+		indir_blk = ospfs_block(indir_blk_no);
 
-		int removed_indir = 0;
+		dir_blk_no = indir_blk[dir_offset];
 
-		// remove indirect block if we just removed the last block in it
-		if ((curr_blks - indir_max) % 256 == 1)
-		{
-			removed_indir = 1;
-			free_block(indir_blockno);
-		}
+		// free indirect block if we're freeing the last block it contains
+		if (dir_offset == 0)
+			free_indir = 1;
 
-		// remove indirect^2 block if we just removed the last indirect block in it
-		if (removed_indir && ((curr_blks - indir_max - 1)/256 == 0))
-		{
-			free_block(oi->oi_indirect2);
-		}
+		// free indir^2 block if we're freeing the last block it contains
+		if (indir_offset == 0 && free_indir)
+			free_indir2 = 1;
+
 	}
+	else 
+		return -EIO; 
 
-	//free the direct block!
-	free_block(blockno);
 
-	return retval;
+	/* ============================== FREE BLOCKS ================================ */
+	if(dir_blk_no >= 3)
+			free_block(dir_blk_no);
+		else
+			return -EIO;
+
+	if(free_indir)
+		free_block(indir_blk_no);
+
+	if(free_indir2)
+		free_block(indir2_blk_no);
+
+	return 0;
 }
 
 
