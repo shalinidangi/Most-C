@@ -706,7 +706,7 @@ indir_index(uint32_t b)
 	// Your code here.
 	if (b < OSPFS_NDIRECT)
 		return -1;
-	else if (b < OSPFSNDIRECT + OSPFS_NINDIRECT)
+	else if (b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
 		return 0;
 	else
 		return (b - (OSPFS_NINDIRECT + OSPFS_NDIRECT)/OSPFS_NINDIRECT);
@@ -880,7 +880,8 @@ add_block(ospfs_inode_t *oi)
 		// if indirect block already exists, set blk_no to its number
 		else
 		{
-			indir_blk_no = oi->oi_indirect2[indir_offset];
+			indir2_blk = ospfs_block(oi->oi_indirect2);
+			indir_blk_no = indir2_blk[indir_offset];
 		}
 
 		// store direct block in indirect block
