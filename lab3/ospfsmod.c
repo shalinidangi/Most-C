@@ -818,7 +818,7 @@ add_block(ospfs_inode_t *oi)
 		// store new block in indirect^2 if possible
 		else if(curr_blks < indir2_max)
 		{
-			// allocate a new indir^2 block in necessary
+			// allocate a new indir^2 block if necessary
 			if(curr_blks == indir_max)
 			{
 				uint32_t indir2_blk = allocate_block();
@@ -858,7 +858,8 @@ add_block(ospfs_inode_t *oi)
 		free_block(allocated[1]);
 		return retval;
 
-	/* EXERCISE: Your code here */
+	// on success, update file size and return 0
+	oi->oi_size += OSPFS_BLKSIZE;	
 	return 0;
 }
 
@@ -888,11 +889,73 @@ add_block(ospfs_inode_t *oi)
 static int
 remove_block(ospfs_inode_t *oi)
 {
-	// current number of blocks in file
-	uint32_t n = ospfs_size2nblocks(oi->oi_size);
+	uint32_t dir_max = OSPFS_NDIRECT;
+	uint32_t indir_max = dir_max + OSPFS_NINDIRECT;
+	uint32_t indir2_max = indir_max + (OSPFS_NINDIRECT * OSPFS_NINDIRECT);
 
-	/* EXERCISE: Your code here */
-	return -EIO; // Replace this line
+	int retval = 0;
+
+	uint32_t curr_blks = ospfs_size2nblocks(oi->oi_size); 	// number of blocks in file
+	uint32_t blockno = 0; 									// block number of block to free
+
+	if (curr_blks <= dir_max)
+	{
+		blockno = oi->oi_direct[curr_blks - 1];
+	}
+
+	else if (curr_blks <= indir_max)
+	{
+		// compute offset into indirect block based on num blocks
+		loff_t offset = (curr_blks - dir_max - 1) * sizeof(uint32_t);
+		loff_t indir_addr = OSPFS_BLKSIZE * oi->oi_indirect;
+
+		// copy block number from inode to 'blockno' variable
+		if (copy_to_user(&blockno, (void *)(indir_addr + offset), sizeof(uint32_t)) > 0)
+			return -EIO;
+
+		// remove indirect block if we just removed the last block in it 
+		if (curr_blks == dir_max + 1)
+			free_block(oi->oi_indirect);
+	}
+
+	else if (curr_blks <= indir2_max)
+	{		
+		loff_t indir2_addr = OSPFS_BLKSIZE * oi->oi_indirect2; // address of indir2 block 
+
+		// compute which indirect block the block goes into
+		loff_t indir_blk_off = sizeof(uint32_t) * (curr_blks - indir_max - 1)/256; // offset of indirect block
+		
+		// read indirect block no from memory 
+		uint32_t *indir_ptr = (uint32_t *)(indir2_addr + indir_blk_off);
+		uint32_t indir_blockno = *indir_ptr;
+		
+		// read direct block no from memory
+		loff_t indir_addr = OSPFS_BLKSIZE * indir_blockno;
+		loff_t offset = ((curr_blks - indir_max - 1) % 256) * sizeof(uint32_t); // offset into indirect block
+		if (copy_to_user(&blockno, (void *)(indir_addr + offset), sizeof(uint32_t)) > 0)
+			return -EIO;
+
+
+		int removed_indir = 0;
+
+		// remove indirect block if we just removed the last block in it
+		if ((curr_blks - indir_max) % 256 == 1)
+		{
+			removed_indir = 1;
+			free_block(indir_blockno);
+		}
+
+		// remove indirect^2 block if we just removed the last indirect block in it
+		if (removed_indir && ((curr_blks - indir_max - 1)/256 == 0))
+		{
+			free_block(oi->oi_indirect2);
+		}
+	}
+
+	//free the direct block!
+	free_block(blockno);
+
+	return retval;
 }
 
 
