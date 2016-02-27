@@ -943,7 +943,7 @@ remove_block(ospfs_inode_t *oi)
 	int free_indir = 0, free_indir2 = 0;
 
 	// if there are no blocks, don't remove any 
-	if (last_block - 1 == 0)
+	if (last_block + 1 == 0)
 		return 0;
 
 	/* ================ COMPUTE BLOCK NUMBERS OF BLOCKS TO FREE ================= */
