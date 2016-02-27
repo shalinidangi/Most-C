@@ -448,7 +448,7 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 	// actual entries
 	while (r == 0 && ok_so_far >= 0 && f_pos >= 2) {
 		ospfs_direntry_t *od;
-		ospfs_inode_t *entry_oi;
+		ospfs_inode_t *oi;
 
 		/* If at the end of the directory, set 'r' to 1 and exit
 		 * the loop.  For now we do this all the time.
@@ -456,7 +456,7 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 * EXERCISE: Your code here */
 
 		// Already handled first two files
-		offset = (f_pos) * OSPFS_DIRENTRY_SIZE;
+		offset = (f_pos - 2) * OSPFS_DIRENTRY_SIZE;
 		if (offset >= dir_oi->oi_size)
 		{
 			r = 1;		/* Fix me! */
@@ -493,7 +493,7 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 			skip = 1;
 		}
 
-		ospfs_inode_t *oi = ospfs_inode(od->od_ino);
+		oi = ospfs_inode(od->od_ino);
 
 		// Call filldir based on file type
 		if (!skip)
@@ -510,13 +510,16 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 			{
 				ok_so_far = filldir(dirent, od->od_name, size, f_pos, od->od_ino, DT_DIR);
 			}
+			else if (type == OSPFS_FTYPE_SYMLINK)
+			{
+				ok_so_far = filldir(dirent, od->od_name, size, f_pos, od->od_ino, DT_LNK);
+			}
 		}
 
 		// If filldir succeeded or we skipped over the file, update the variables
 		// to prepare for the next entry
 		if (ok_so_far >= 0 || skip)
 		{
-			offset += OSPFS_DIRENTRY_SIZE;
 			f_pos++;
 		}
 		else
@@ -1073,7 +1076,7 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 		int ret = add_block(oi);
 		if (ret == 0)
 		{
-			r++; //TACO why?
+			r++;
 		}
 		else if (ret == -ENOSPC)
 		{
@@ -1177,7 +1180,7 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 	if (*f_pos >= oi->oi_size)
 	{
 		// File position is already past end of file
-		count = 0;
+		goto done;
 	}
 
 	if (count + *f_pos > oi->oi_size)
@@ -1223,7 +1226,7 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		}
 
 		
-		if(copy_to_user(buffer, data + block_offset, amt_in_blk) > 0)
+		if(copy_to_user(buffer, data + block_offset, amt_in_blk) != 0)
 		{
 			retval = -EFAULT;
 			goto done;
@@ -1266,7 +1269,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
 	// use struct file's f_flags field and the O_APPEND bit.
 	/* EXERCISE: Your code here */
-	if (filp->f_flags & O_APPEND)
+	if ((filp->f_flags & O_APPEND) == O_APPEND)
 	{
 		// Start writing at the end of the file
 		*f_pos = oi->oi_size;
@@ -1280,9 +1283,12 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	{
 		// If the write is too large (or the APPEND flag was indicated,
 		// change the file size to accomodate for it
-		change_size(oi, count + *f_pos);
-
-		// ** Do we need to check that change_size() was successful?**
+		int failure = change_size(oi, count + *f_pos);
+		if (failure)
+		{
+			retval = failure;
+			goto done;
+		}
 	}
 
 	// Copy data block by block
@@ -1317,7 +1323,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 			amt_in_blk = remaining_data;
 		}
 
-		if (copy_from_user(data + block_offset, buffer, amt_in_blk) > 0)
+		if (copy_from_user(data + block_offset, buffer, amt_in_blk) != 0)
 		{
 			retval = -EFAULT;
 			goto done;
