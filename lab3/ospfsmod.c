@@ -969,6 +969,7 @@ remove_block(ospfs_inode_t *oi)
             return -EIO;
 
 		dir_blk_no = indir_blk[offset];
+		indir_blk[offset] = 0; // zero out the direct block
 
 		// free indirect block if we're freeing the last block it contains
 		if (offset == 0)
@@ -999,12 +1000,17 @@ remove_block(ospfs_inode_t *oi)
 
 		dir_blk_no = indir_blk[dir_offset];
 
-		if (dir_blk_no == 0)
+		if (dir_blk_no < 3)
 			return -EIO;
+
+		indir_blk[dir_offset] = 0; // zero out direct block
 
 		// free indirect block if we're freeing the last block it contains
 		if (dir_offset == 0)
+		{
+			indir2_blk[indir_offset] = 0; // zero out indirect block
 			free_indir = 1;
+		}
 
 		// free indir^2 block if we're freeing the last block it contains
 		if (indir_offset == 0 && free_indir)
