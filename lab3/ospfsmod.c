@@ -794,10 +794,7 @@ add_block(ospfs_inode_t *oi)
 	dir_blk_no = allocate_block();
 
 	if(!dir_blk_no) // allocation failed
-	{
-		retval = -ENOSPC;
-		goto fail;
-	}
+		return -ENOSPC;
 
 	// zero out newly allocated direct block
 	dir_blk = ospfs_block(dir_blk_no);
@@ -812,8 +809,10 @@ add_block(ospfs_inode_t *oi)
 	/* ============ STORE BLOCK AS INDIRECT IF POSSIBLE ============== */
 	else if(curr_blks < indir_max)
 	{
+		int32_t offset = direct_index(curr_blks);
+
 		// allocate a new indirect block if necessary
-		if(curr_blks == dir_max)
+		if(offset == 0)
 		{
 			indir_blk_no = allocate_block();
 			
@@ -832,7 +831,6 @@ add_block(ospfs_inode_t *oi)
 
 		// store direct block's number in indirect block
 		indir_blk = ospfs_block(oi->oi_indirect);
-		int32_t offset = direct_index(curr_blks);
 		indir_blk[offset] = dir_blk_no;
 	}
 
@@ -859,12 +857,6 @@ add_block(ospfs_inode_t *oi)
 
 			oi->oi_indirect2 = indir2_blk_no;
 		}
-		// if indirect block already exists, set blk_no to its number
-		else
-		{
-			indir2_blk = ospfs_block(oi->oi_indirect2);
-			indir_blk_no = indir2_blk[indir_offset];
-		}
 
 		// allocate new indirect block if necessary
 		if(dir_offset == 0)
@@ -885,12 +877,22 @@ add_block(ospfs_inode_t *oi)
 			indir2_blk = ospfs_block(oi->oi_indirect2);
 			indir2_blk[indir_offset] = indir_blk_no;
 		}
+		// if indirect block already exists, set blk_no to its number
+		else
+		{
+			indir2_blk = ospfs_block(oi->oi_indirect2);
+			indir_blk_no = indir2_blk[indir_offset];
+		}
 
 		// store direct block in indirect block
 		indir_blk = ospfs_block(indir_blk_no);
 		indir_blk[dir_offset] = dir_blk_no;
 
 	}
+
+	// on success, update file size and return 0
+	oi->oi_size += OSPFS_BLKSIZE;	
+	return 0;
 	
 	// deallocate any allocated blocks and return error no
 	fail:
@@ -898,10 +900,6 @@ add_block(ospfs_inode_t *oi)
 		free_block(indir_blk_no);
 		free_block(indir2_blk_no);
 		return retval;
-
-	// on success, update file size and return 0
-	oi->oi_size += OSPFS_BLKSIZE;	
-	return 0;
 }
 
 
