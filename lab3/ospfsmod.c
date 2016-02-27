@@ -571,8 +571,16 @@ ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 		return -ENOENT;
 	}
 
+
+
 	od->od_ino = 0;
 	oi->oi_nlink--;
+
+	// Change file size if we are deleting it
+	if (oi->oi_nlink == 0 && oi->oi_ftype != OSPFS_FTYPE_SYMLINK)
+	{
+		change_size(oi, 0);
+	}
 	return 0;
 }
 
@@ -1676,9 +1684,9 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
             strcpy(s_oi->oi_symlink, symname);
             s_oi->oi_size = strlen(symname);
 
-            dir_entry->od_ino = entry_ino;
             memcpy(dir_entry->od_name, dentry->d_name.name, dentry->d_name.len);
             dir_entry->od_name[dentry->d_name.len] = '\0';
+            dir_entry->od_ino = entry_ino;
             break;
         }
     }
