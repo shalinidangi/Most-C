@@ -1430,7 +1430,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	if(success < 0)
 		return ERR_PTR(success);
 
-	return ospfs_inode_data(dir_oi, offset);
+	return ospfs_inode_data(dir_oi, off);
 }
 
 // ospfs_link(src_dentry, dir, dst_dentry
