@@ -612,7 +612,7 @@ allocate_block(void)
 	int i;
 	for (i = OSPFS_FREEMAP_BLK + 1; i < ospfs_super->os_nblocks; i++)
 	{
-		if(bitvector_test(bitmap,i))
+		if(bitvector_test(bitmap, i))
 		{
 			blk_num = i;
 			break;
@@ -621,7 +621,7 @@ allocate_block(void)
 
 	// allocate block if a free one was found
 	if (blk_num)
-		bitvector_clear(bitmap,blk_num);
+		bitvector_clear(bitmap, blk_num);
 
 	return blk_num;
 }
@@ -645,10 +645,10 @@ free_block(uint32_t blockno)
 	void *bitmap = ospfs_block(OSPFS_FREEMAP_BLK); // pointer to bitmap
 
 	// return if attempting to free a non-freeable block
-	if(blockno == 0 || blockno == 1 || blockno == 2)
+	if(blockno < 3)
 		return;
 
-	bitvector_set(bitmap,blockno);
+	bitvector_set(bitmap, blockno);
 }
 
 
@@ -859,9 +859,15 @@ add_block(ospfs_inode_t *oi)
 
 			oi->oi_indirect2 = indir2_blk_no;
 		}
+		// if indirect block already exists, set blk_no to its number
+		else
+		{
+			indir2_blk = ospfs_block(oi->oi_indirect2);
+			indir_blk_no = indir2_blk[indir_offset];
+		}
 
 		// allocate new indirect block if necessary
-		if(dir_offset % OSPFS_NINDIRECT == 0)
+		if(dir_offset == 0)
 		{
 			indir_blk_no = allocate_block();
 			
@@ -878,13 +884,6 @@ add_block(ospfs_inode_t *oi)
 			// store indirect block in indir^2 block
 			indir2_blk = ospfs_block(oi->oi_indirect2);
 			indir2_blk[indir_offset] = indir_blk_no;
-		}
-
-		// if indirect block already exists, set blk_no to its number
-		else
-		{
-			indir2_blk = ospfs_block(oi->oi_indirect2);
-			indir_blk_no = indir2_blk[indir_offset];
 		}
 
 		// store direct block in indirect block
@@ -1484,21 +1483,17 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	if(IS_ERR(l))
 		return PTR_ERR(l);
 
-	// TACO: Check if we were able to create the file
-	// If not, return -ENOSPC?  
+	// Increment the number of links on the inode
+	ospfs_inode_t *src_inode = ospfs_inode(src_dentry->d_inode->i_ino);
+	src_inode->oi_nlink++;
+
 
 	// Set the inode value
 	l->od_ino = src_dentry->d_inode->i_ino;
 
 	// Change the file name
-	//l->od_name = dst_dentry->d_name.name;
-
 	memcpy(l->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len);
 	l->od_name[dst_dentry->d_name.len] = '\0';
-
-	// Increment the number of links on the inode
-	ospfs_inode_t *src_inode = ospfs_inode(src_dentry->d_inode->i_ino);
-	src_inode->oi_nlink++;
 
 	return 0;
 }
@@ -1552,8 +1547,8 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	ospfs_inode_t *inode;
 	for (inode_no = 2; inode_no < ospfs_super->os_ninodes; inode_no++) 
 	{
-		ospfs_inode_t *tmp = ospfs_inode(inode_no);
-		if(tmp->oi_nlink == 0)
+		inode = ospfs_inode(inode_no);
+		if(inode->oi_nlink == 0)
 		{
 			entry_ino = inode_no;
 			break;
@@ -1562,7 +1557,6 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 
 	if (entry_ino) 	// if we actually found inode, initialize
 	{
-		inode = ospfs_inode(entry_ino);
 		inode->oi_nlink++;
 		inode->oi_size = 0;
 		inode->oi_mode = mode;
@@ -1632,7 +1626,45 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	uint32_t entry_ino = 0;
 
 	/* EXERCISE: Your code here. */
-	return -EINVAL;
+	// Failure if the name is too long
+	if (dentry->d_name.len > OSPFS_MAXNAMELEN || strlen(symname) > OSPFS_MAXNAMELEN)
+	{
+		return -ENAMETOOLONG;
+	}
+
+	// Failure if the filename already exists
+	if (find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len) != NULL)
+	{
+		return -EEXIST;
+	}
+
+	for (entry_ino = 2; entry_ino < ospfs_super->os_ninodes; entry_ino++)
+    {
+        ospfs_inode_t* oi = ospfs_inode(entry_ino);
+        if (!oi->oi_nlink)
+        {
+            ospfs_symlink_inode_t* s_oi = (ospfs_symlink_inode_t*)oi;
+            ospfs_direntry_t* dir_entry = create_blank_direntry(dir_oi);
+            
+            if (IS_ERR(dir_entry))
+                return PTR_ERR(dir_entry);
+
+            // Set fields in symlink
+            s_oi->oi_ftype = OSPFS_FTYPE_SYMLINK;
+            s_oi->oi_nlink++;
+            strcpy(s_oi->oi_symlink, symname);
+            s_oi->oi_size = strlen(symname);
+
+            dir_entry->od_ino = entry_ino;
+            memcpy(dir_entry->od_name, dentry->d_name.name, dentry->d_name.len);
+            dir_entry->od_name[dentry->d_name.len] = '\0';
+            break;
+        }
+    }
+    
+    if (entry_ino == ospfs_super->os_ninodes)
+       return -ENOSPC;
+
 
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
