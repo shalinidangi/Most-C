@@ -937,18 +937,21 @@ remove_block(ospfs_inode_t *oi)
 	// block numbers and blocks of interest to us
 	uint32_t *dir_blk, *indir_blk, *indir2_blk;
 	uint32_t dir_blk_no = 0, indir_blk_no = 0, indir2_blk_no = 0;
-	uint32_t last_block = ospfs_size2nblocks(oi->oi_size - 1); // 0-index of last direct block
-
+	uint32_t last_block = ospfs_size2nblocks(oi->oi_size)  - 1; // 0-index of last direct block
+	
 	// whether to attempt freeing an indirect or indir^2 block
 	int free_indir = 0, free_indir2 = 0;
 
+	// if there are no blocks, don't remove any 
+	if (last_block - 1 == 0)
+		return 0;
 
 	/* ================ COMPUTE BLOCK NUMBERS OF BLOCKS TO FREE ================= */
 	if (last_block < dir_max) // block is in direct block array 
 	{
 		dir_blk_no = oi->oi_direct[last_block];
 
-		if (oi->oi_direct[last_block] == 0)
+		if (dir_blk_no < 3)
            return -EIO;
 
 		oi->oi_direct[last_block] = 0;
@@ -965,10 +968,11 @@ remove_block(ospfs_inode_t *oi)
 		
 		indir_blk = ospfs_block(indir_blk_no);
 
-		if (indir_blk[last_block] == 0)
-            return -EIO;
-
 		dir_blk_no = indir_blk[offset];
+
+		if (dir_blk_no < 3)
+            return -EIO;
+		
 		indir_blk[offset] = 0; // zero out the direct block
 
 		// free indirect block if we're freeing the last block it contains
@@ -1018,7 +1022,6 @@ remove_block(ospfs_inode_t *oi)
 			oi->oi_indirect2 = 0;
 			free_indir2 = 1;
 		}
-
 	}
 	else 
 		return -EIO; 
