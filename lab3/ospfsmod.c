@@ -965,7 +965,10 @@ remove_block(ospfs_inode_t *oi)
 
 		// free indirect block if we're freeing the last block it contains
 		if (offset == 0)
+		{
+			oi->oi_indirect = 0;
 			free_indir = 1;
+		}
 	}
 
 	else if (dir_blk_no < indir2_max) // block is in the indir^2 block
@@ -995,7 +998,10 @@ remove_block(ospfs_inode_t *oi)
 
 		// free indir^2 block if we're freeing the last block it contains
 		if (indir_offset == 0 && free_indir)
+		{
+			oi->oi_indirect2 = 0;
 			free_indir2 = 1;
+		}
 
 	}
 	else 
@@ -1424,19 +1430,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	if(success < 0)
 		return ERR_PTR(success);
 
-	// get address of newly allocated block
-	uint32_t old_size = dir_oi->oi_size;
-	uint32_t blockno = ospfs_inode_blockno(dir_oi, dir_oi->oi_size - 1);
-	loff_t blk_addr = blockno * OSPFS_BLKSIZE;
-
-	// zero out all the dir entries in the block
-	for (off = old_size; off < dir_oi->oi_size; off += OSPFS_DIRENTRY_SIZE) 
-	{
-		ospfs_direntry_t *od = ospfs_inode_data(dir_oi, off);
-		od->od_ino = 0;
-	}
-
-	return ospfs_inode_data(dir_oi, old_size);
+	return ospfs_inode_data(dir_oi, offset);
 }
 
 // ospfs_link(src_dentry, dir, dst_dentry
