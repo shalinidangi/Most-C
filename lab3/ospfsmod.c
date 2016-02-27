@@ -1563,7 +1563,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	if (entry_ino) 	// if we actually found inode, initialize
 	{
 		inode = ospfs_inode(entry_ino);
-		inode->oi_nlink = 0;
+		inode->oi_nlink++;
 		inode->oi_size = 0;
 		inode->oi_mode = mode;
 		inode->oi_ftype = OSPFS_FTYPE_REG;
@@ -1574,7 +1574,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	}
 	
 	/* ================= FIND AND INITIALIZE DIRECTORY ENTRY ================= */
-	ospfs_direntry_t* dir_entry = create_blank_direntry(ospfs_inode(dir->i_ino));
+	ospfs_direntry_t* dir_entry = create_blank_direntry(dir_oi);
 
 	// return error if problem creating direntry
 	if (IS_ERR(dir_entry))
@@ -1585,6 +1585,9 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	// copy name from dentry into dir_entry
 	memcpy(dir_entry->od_name, dentry->d_name.name, dentry->d_name.len);
 	dir_entry->od_name[dentry->d_name.len] = '\0';
+
+    if (entry_ino == ospfs_super->os_ninodes)
+    	return -ENOSPC;
 
 
 	/* Execute this code after your function has successfully created the
